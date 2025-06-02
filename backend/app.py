@@ -51,6 +51,8 @@ CORS(app, resources={
             "http://localhost:5500",
             "http://127.0.0.1:5500",  # Add this line for your local frontend server
             "https://frontend-rosy-seven-17.vercel.app"
+            "http://127.0.0.1:19999", # From your log
+            "http://10.204.0.208:19999", # From your log
         ]
     }
 })
