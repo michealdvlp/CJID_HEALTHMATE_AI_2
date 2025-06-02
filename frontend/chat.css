@@ -48,7 +48,7 @@
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--light-grey);
-    display: flex;
+    display: block;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
@@ -64,6 +64,7 @@ body {
     max-width: 800px;
     height: 90vh;
     display: flex;
+    margin-left: 20vw;
     flex-direction: column;
     overflow: hidden;
     position: relative; /* For absolute positioning of screens */
