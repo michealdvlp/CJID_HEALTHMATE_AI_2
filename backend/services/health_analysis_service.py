@@ -22,7 +22,7 @@ AZURE_LANGUAGE_KEY = os.getenv("AZURE_HEALTH_KEY")
 AZURE_LANGUAGE_ENDPOINT = os.getenv("AZURE_HEALTH_ENDPOINT")
 
 # OpenAI configuration
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Supported languages
 SUPPORTED_LANGUAGES = {
@@ -38,7 +38,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("healthmate.log"),
+        # logging.FileHandler("healthmate.log"),
         logging.StreamHandler()
     ]
 )
