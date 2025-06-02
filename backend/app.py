@@ -55,7 +55,8 @@ CORS(app, resources={
             "http://127.0.0.1:19999", # From your log
             "http://10.204.0.208:19999", # From your log
             "http://127.0.0.1:10000",
-            "http://10.204.201.13:10000"
+            "http://10.204.201.13:10000",
+            "https://cjid-healthmate-ai-2.onrender.com"
         ]
     }
 })
