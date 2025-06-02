@@ -1,6 +1,3 @@
-// API base URL - change to your local server address for testing
-const API_BASE_URL = 'https://cjid-hackathon-healthmate-ai.onrender.com';
-
 document.addEventListener('DOMContentLoaded', () => {
     const welcomeScreen = document.querySelector('.welcome-screen');
     const chatScreen = document.querySelector('.chat-screen');
