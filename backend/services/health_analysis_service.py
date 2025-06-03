@@ -1,9 +1,9 @@
+import httpx # Import httpx
 import os
 import sys
 import requests
 import uuid
 import json
-import httpx # Import httpx
 # import openai
 from openai import OpenAI
 from dotenv import load_dotenv
