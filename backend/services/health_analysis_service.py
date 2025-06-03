@@ -3,6 +3,7 @@ import sys
 import requests
 import uuid
 import json
+import httpx # Import httpx
 # import openai
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -214,6 +215,9 @@ def process_with_openai(text, health_analysis):
     """
     
     try:
+        # Explicitly create an httpx client with no proxy settings
+        # This overrides any environment variables that might be setting proxies
+        http_client = httpx.Client(proxies=None)
         # New OpenAI API format (v1.0.0+)
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         response = client.chat.completions.create(
