@@ -3,7 +3,8 @@ import sys
 import requests
 import uuid
 import json
-import openai
+# import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.textanalytics import TextAnalyticsClient
@@ -214,7 +215,7 @@ def process_with_openai(text, health_analysis):
     
     try:
         # New OpenAI API format (v1.0.0+)
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -247,7 +248,7 @@ def generate_health_facts(topic="general health", count=5):
         """
         
         # Initialize OpenAI client
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
         # Generate response
         response = client.chat.completions.create(
