@@ -1,4 +1,6 @@
-// ------------------- chatbot.js -------------------
+// -------------------------------------------
+// Complete chatbot.js
+// -------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
   // === 1. Backend base URL & thread tracking ===
@@ -126,39 +128,35 @@ document.addEventListener('DOMContentLoaded', () => {
       // === 3a. Clean out any follow_up_questions from data.text ===
       let cleanedText = data.text;
 
-      // If there are follow_up_questions, strip them from the text:
       if (Array.isArray(data.follow_up_questions)) {
         data.follow_up_questions.forEach(question => {
-          // Remove any occurrence of that exact question (and its leading “1. ” if present)
-          // First remove lines that start with “<number>. question”
           const escaped = question.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-          // Build a regex to strip either “1. <question>” or just “<question>”
+          // Remove lines like "1. <question>"
           const rx = new RegExp(`^\\s*\\d+\\.\\s*${escaped}\\s*$`, 'm');
           cleanedText = cleanedText.replace(rx, '');
-          // Then also remove any leftover bare question text
+          // Then remove bare question text
           cleanedText = cleanedText.replace(new RegExp(escaped, 'g'), '');
         });
-        // Finally, collapse any consecutive blank lines into two newlines:
+        // Collapse repeated blank lines
         cleanedText = cleanedText.replace(/\n\s*\n\s*\n/g, '\n\n');
       }
 
-      // Display just the cleaned text as the AI bubble:
+      // Display just the cleaned text
       addMessage(cleanedText.trim(), 'ai');
 
       // === 3b. Render diagnosis panel if conditions exist ===
       if (data.possible_conditions && data.possible_conditions.length > 0) {
         renderDiagnosisPanel(data);
       }
-      // Otherwise, if there are follow_up_questions (but no conditions yet),
-      // we can show those questions separately (optional):
       else if (data.follow_up_questions && data.follow_up_questions.length > 0) {
+        // If no conditions yet, show follow-up bullets
         data.follow_up_questions.forEach(q => {
           addMessage("🔸 " + q, 'ai');
         });
       }
 
-      // If send_sos is true (emergency) and there were no conditions shown, warn:
-      if (data.send_sos && data.possible_conditions.length === 0) {
+      // If send_sos is true (emergency) and no conditions shown, warn:
+      if (data.send_sos && (!data.possible_conditions || data.possible_conditions.length === 0)) {
         addMessage("🚨 This sounds like an emergency. Please call your local emergency number immediately.", 'ai');
       }
     }
@@ -170,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // 4. Show diagnosis panel (always display conditions under urgent)
+  // 4. Show diagnosis panel (UPDATED)
   // -------------------------------------------
   function renderDiagnosisPanel(responseData) {
     const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
@@ -183,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryElement.textContent = 'No conditions found';
     }
 
-    // 2) Triage badge (urgent/moderate/mild)
+    // 2) Build the triage badge
     const triageElem = document.getElementById('diagnosis-triage');
     let triageText = '', triageIndicator = '', triageClass = '';
     if (isUrgent) {
@@ -202,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
     triageElem.className = triageClass;
     triageElem.innerHTML = `<span class="level-indicator">${triageIndicator}</span> ${triageText}`;
 
-    // 3) Show or hide the urgent block
+    // 3) Show/hide the urgent block
     if (isUrgent) {
       diagnosisPanel.classList.add('urgent');
       diagnosisPanelTitle.textContent = '🚨 Immediate Attention Required';
@@ -213,17 +211,30 @@ document.addEventListener('DOMContentLoaded', () => {
       urgentDiagnosisContent.style.display = 'none';
     }
 
-    // 4) Populate Analysis Summary (always visible, even if urgent)
+    // 4) Populate “Analysis Summary” with grey containers
     const analysisList = document.getElementById('analysis-summary-list');
-    analysisList.innerHTML = '';
+    analysisList.innerHTML = ''; // clear any old items
+
     responseData.possible_conditions.forEach((cond, idx) => {
-      const li = document.createElement('li');
-      li.innerHTML = `<strong>${idx + 1}. ${cond.name}:</strong> ${cond.description}`;
-      analysisList.appendChild(li);
+      // Create a <div> with class “possible-condition-card”
+      const card = document.createElement('div');
+      card.classList.add('possible-condition-card');
+
+      // <h5>Condition Name</h5>
+      const nameHeading = document.createElement('h5');
+      nameHeading.textContent = `${idx + 1}. ${cond.name}`;
+      card.appendChild(nameHeading);
+
+      // <p>Description (with pre-wrap)
+      const descPara = document.createElement('p');
+      descPara.textContent = cond.description.trim();
+      card.appendChild(descPara);
+
+      analysisList.appendChild(card);
     });
     analysisSummarySection.style.display = 'block';
 
-    // 5) Populate Next Steps (always visible)
+    // 5) Populate “Next Steps” (always visible)
     const nextStepsList = document.getElementById('next-steps-list');
     nextStepsList.innerHTML = '';
     responseData.safety_measures.forEach(step => {
@@ -236,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6) Show confidence‐score section (optional)
     confidenceScoreSection.style.display = 'block';
 
-    // 7) Reveal panel, hide any reopen button
+    // 7) Reveal the panel and hide the reopen button
     diagnosisPanel.style.display = 'flex';
     diagnosisPanel.classList.add('active');
     reopenPanelButton.style.display = 'none';
@@ -397,4 +408,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------
   showScreen(welcomeScreen);
 });
-// ------------------- End of chatbot.js -------------------
+// -------------------------------------------
+// End of chatbot.js
+// -------------------------------------------
