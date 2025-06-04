@@ -1,11 +1,11 @@
 // ------------------- chatbot.js -------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  // === 1. NEW: Define the backend base URL & threadId ===
+  // === 1. Backend base URL & thread tracking ===
   const API_BASE_URL = 'https://triagecall.vercel.app';
   let threadId = null;
 
-  // === 2. Cache all DOM elements ===
+  // === 2. Cache DOM elements ===
   const welcomeScreen = document.querySelector('.welcome-screen');
   const chatScreen = document.querySelector('.chat-screen');
   const firstAidScreen = document.querySelector('.first-aid-screen');
@@ -44,20 +44,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const callEmergencyButton = document.getElementById('call-emergency-button');
   const performFirstAidButton = document.getElementById('perform-first-aid-button');
 
-  // Track the currently active content screen
+  // Track which screen is currently active
   let currentActiveContentScreen = welcomeScreen;
 
-  // === Utility: Show/hide screens ===
+  // === Utility: show/hide screens ===
   function showScreen(screenToShow, fromSidebar = false) {
-    [welcomeScreen, chatScreen, firstAidScreen, symptomsHistoryScreen, healthFactsScreen, emergencyContactsScreen, settingsScreen]
-      .forEach(screen => screen.classList.remove('active-screen'));
+    [
+      welcomeScreen,
+      chatScreen,
+      firstAidScreen,
+      symptomsHistoryScreen,
+      healthFactsScreen,
+      emergencyContactsScreen,
+      settingsScreen
+    ].forEach(screen => screen.classList.remove('active-screen'));
 
     screenToShow.classList.add('active-screen');
     currentActiveContentScreen = screenToShow;
 
-    if (fromSidebar) {
-      closeSidebar();
-    }
+    if (fromSidebar) closeSidebar();
   }
 
   // === Sidebar open/close ===
@@ -70,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebarOverlay.classList.remove('active');
   }
 
-  // === Chat helper: append a message bubble ===
+  // === Chat helper: add a message bubble ===
   function addMessage(text, sender) {
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message-bubble', sender);
@@ -79,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  // === Chat helper: typing “…” indicator ===
+  // === Typing indicator (“…”) ===
   function simulateAiTyping() {
     const typingBubble = document.createElement('div');
     typingBubble.classList.add('message-bubble', 'ai', 'typing-indicator');
@@ -89,19 +94,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return typingBubble;
   }
   function removeTypingIndicator(indicator) {
-    if (indicator && indicator.parentNode) {
-      indicator.remove();
-    }
+    if (indicator && indicator.parentNode) indicator.remove();
   }
 
   // -------------------------------------------
-  // === 3. NEW: function to call /triage ===
+  // 3. Fetch /triage, then parse out follow_up_questions
   // -------------------------------------------
   async function handleAiConversation(userMessage) {
-    // Add typing indicator
     const typingIndicator = simulateAiTyping();
 
-    // Build payload (with optional thread_id)
     const payload = { description: userMessage };
     if (threadId) payload.thread_id = threadId;
 
@@ -122,22 +123,42 @@ document.addEventListener('DOMContentLoaded', () => {
       // Save the returned thread_id
       threadId = data.thread_id;
 
-      // Render AI’s “text” in chat:
-      addMessage(data.text.trim(), 'ai');
+      // === 3a. Clean out any follow_up_questions from data.text ===
+      let cleanedText = data.text;
 
-      // If we have possible_conditions, show diagnosis panel:
+      // If there are follow_up_questions, strip them from the text:
+      if (Array.isArray(data.follow_up_questions)) {
+        data.follow_up_questions.forEach(question => {
+          // Remove any occurrence of that exact question (and its leading “1. ” if present)
+          // First remove lines that start with “<number>. question”
+          const escaped = question.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+          // Build a regex to strip either “1. <question>” or just “<question>”
+          const rx = new RegExp(`^\\s*\\d+\\.\\s*${escaped}\\s*$`, 'm');
+          cleanedText = cleanedText.replace(rx, '');
+          // Then also remove any leftover bare question text
+          cleanedText = cleanedText.replace(new RegExp(escaped, 'g'), '');
+        });
+        // Finally, collapse any consecutive blank lines into two newlines:
+        cleanedText = cleanedText.replace(/\n\s*\n\s*\n/g, '\n\n');
+      }
+
+      // Display just the cleaned text as the AI bubble:
+      addMessage(cleanedText.trim(), 'ai');
+
+      // === 3b. Render diagnosis panel if conditions exist ===
       if (data.possible_conditions && data.possible_conditions.length > 0) {
         renderDiagnosisPanel(data);
       }
-      // Otherwise, if there are follow_up_questions, list them:
+      // Otherwise, if there are follow_up_questions (but no conditions yet),
+      // we can show those questions separately (optional):
       else if (data.follow_up_questions && data.follow_up_questions.length > 0) {
         data.follow_up_questions.forEach(q => {
           addMessage("🔸 " + q, 'ai');
         });
       }
 
-      // If send_sos is true and no conditions were shown, add an emergency prompt
-      if (data.send_sos && (!data.possible_conditions || data.possible_conditions.length === 0)) {
+      // If send_sos is true (emergency) and there were no conditions shown, warn:
+      if (data.send_sos && data.possible_conditions.length === 0) {
         addMessage("🚨 This sounds like an emergency. Please call your local emergency number immediately.", 'ai');
       }
     }
@@ -149,12 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 4. NEW: renderDiagnosisPanel(data) ===
+  // 4. Show diagnosis panel (always display conditions under urgent)
   // -------------------------------------------
   function renderDiagnosisPanel(responseData) {
     const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
 
-    // 1) Always set “Likely:” to the first condition name if it exists
+    // 1) “Likely:” → first condition name (if any)
     const primaryElement = document.getElementById('diagnosis-condition');
     if (responseData.possible_conditions.length > 0) {
       primaryElement.textContent = responseData.possible_conditions[0].name;
@@ -162,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryElement.textContent = 'No conditions found';
     }
 
-    // 2) Configure the triage badge
+    // 2) Triage badge (urgent/moderate/mild)
     const triageElem = document.getElementById('diagnosis-triage');
     let triageText = '', triageIndicator = '', triageClass = '';
     if (isUrgent) {
@@ -181,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     triageElem.className = triageClass;
     triageElem.innerHTML = `<span class="level-indicator">${triageIndicator}</span> ${triageText}`;
 
-    // 3) Show/hide the urgent block
+    // 3) Show or hide the urgent block
     if (isUrgent) {
       diagnosisPanel.classList.add('urgent');
       diagnosisPanelTitle.textContent = '🚨 Immediate Attention Required';
@@ -212,17 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     nextStepsSection.style.display = 'block';
 
-    // 6) Show confidence‐score (or you can hide if you prefer)
+    // 6) Show confidence‐score section (optional)
     confidenceScoreSection.style.display = 'block';
 
-    // 7) Reveal the panel and hide the reopen button
+    // 7) Reveal panel, hide any reopen button
     diagnosisPanel.style.display = 'flex';
     diagnosisPanel.classList.add('active');
     reopenPanelButton.style.display = 'none';
   }
 
   // -------------------------------------------
-  // 5. Event Listeners: “Start Chat,” “Send,” “Enter” key
+  // 5. Event Listeners: ”Start Chat,” “Send,” “Enter”
   // -------------------------------------------
   startChatButton.addEventListener('click', () => {
     showScreen(chatScreen);
@@ -235,13 +256,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const userMessage = chatInput.value.trim();
     if (!userMessage) return;
 
-    // Hide prompt suggestions on first send
+    // Hide prompts once user starts typing
     promptSuggestionArea.style.display = 'none';
 
     addMessage(userMessage, 'user');
     chatInput.value = '';
 
-    // Hide any existing diagnosis panel before new request
+    // Hide any existing diagnosis panel before making a new request
     diagnosisPanel.classList.remove('active', 'urgent');
     diagnosisPanel.style.display = 'none';
     reopenPanelButton.style.display = 'none';
@@ -250,18 +271,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      sendButton.click();
-    }
+    if (e.key === 'Enter') sendButton.click();
   });
 
   chatInput.addEventListener('input', () => {
     if (chatInput.value.trim().length > 0) {
       promptSuggestionArea.style.display = 'none';
-    } else {
-      if (!diagnosisPanel.classList.contains('active')) {
-        promptSuggestionArea.style.display = 'flex';
-      }
+    } else if (!diagnosisPanel.classList.contains('active')) {
+      promptSuggestionArea.style.display = 'flex';
     }
   });
 
@@ -292,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 300);
   });
+
   reopenPanelButton.addEventListener('click', () => {
     diagnosisPanel.style.display = 'flex';
     diagnosisPanel.classList.add('active');
@@ -303,11 +321,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------------------
   callEmergencyButton.addEventListener('click', () => {
     alert('Calling emergency services...');
-    window.location.href = 'tel:112'; // Or whatever local emergency number
+    window.location.href = 'tel:112'; // adjust if your local emergency number differs
   });
+
   performFirstAidButton.addEventListener('click', () => {
     showScreen(firstAidScreen);
   });
+
   document.querySelector('.first-aid-screen .back-button').addEventListener('click', () => {
     showScreen(chatScreen);
     if (diagnosisPanel.classList.contains('urgent')) {
