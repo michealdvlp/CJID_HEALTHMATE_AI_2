@@ -1,3 +1,100 @@
+
+// … above in chatbot.js …
+
+async function handleAiConversation(userMessage) {
+  // (existing code that does fetch → /triage → set threadId → add AI text …)
+  // If possible_conditions are non-empty, call renderDiagnosisPanel(data).
+  if (data.possible_conditions && data.possible_conditions.length > 0) {
+    renderDiagnosisPanel(data);
+  }
+  // … rest of function …
+}
+
+// -------------------------------------------
+// REPLACE THIS old renderDiagnosisPanel
+//   (which used to hide analysisSummary when urgent)
+// … with the new version below: 
+function renderDiagnosisPanel(responseData) {
+  const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
+
+  // 1) Always set “Likely:” from the first condition (if any)
+  const primaryElement = document.getElementById('diagnosis-condition');
+  if (responseData.possible_conditions.length > 0) {
+    primaryElement.textContent = responseData.possible_conditions[0].name;
+  } else {
+    primaryElement.textContent = 'No conditions found';
+  }
+
+  // 2) Build the triage badge
+  const triageElem = document.getElementById('diagnosis-triage');
+  let triageText = '', triageIndicator = '', triageClass = '';
+  if (isUrgent) {
+    triageText = 'Urgent (Call Emergency)';
+    triageIndicator = '🟥';
+    triageClass = 'triage-level urgent';
+  } else if (responseData.triage.type === 'clinic') {
+    triageText = 'Moderate (See doctor within 24 hrs)';
+    triageIndicator = '🟡';
+    triageClass = 'triage-level moderate';
+  } else {
+    triageText = 'Mild (Self-care)';
+    triageIndicator = '🟢';
+    triageClass = 'triage-level mild';
+  }
+  triageElem.className = triageClass;
+  triageElem.innerHTML = `<span class="level-indicator">${triageIndicator}</span> ${triageText}`;
+
+  // 3) Show/hide the urgent block
+  if (isUrgent) {
+    diagnosisPanel.classList.add('urgent');
+    diagnosisPanelTitle.textContent = '🚨 Immediate Attention Required';
+    urgentDiagnosisContent.style.display = 'flex';
+  } else {
+    diagnosisPanel.classList.remove('urgent');
+    diagnosisPanelTitle.textContent = 'Diagnosis Result';
+    urgentDiagnosisContent.style.display = 'none';
+  }
+
+  // 4) Populate Analysis Summary (always visible)
+  const analysisList = document.getElementById('analysis-summary-list');
+  analysisList.innerHTML = '';
+  responseData.possible_conditions.forEach((cond, idx) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${idx + 1}. ${cond.name}:</strong> ${cond.description}`;
+    analysisList.appendChild(li);
+  });
+  analysisSummarySection.style.display = 'block';
+
+  // 5) Populate Next Steps (always visible)
+  const nextStepsList = document.getElementById('next-steps-list');
+  nextStepsList.innerHTML = '';
+  responseData.safety_measures.forEach(step => {
+    const li = document.createElement('li');
+    li.textContent = step;
+    nextStepsList.appendChild(li);
+  });
+  nextStepsSection.style.display = 'block';
+
+  // 6) Show confidence (you can hide or leave as you like)
+  confidenceScoreSection.style.display = 'block';
+
+  // 7) Reveal the panel, hide the reopen button
+  diagnosisPanel.style.display = 'flex';
+  diagnosisPanel.classList.add('active');
+  reopenPanelButton.style.display = 'none';
+}
+// -------------------------------------------
+
+// … rest of chatbot.js (no other changes needed) …
+
+
+
+
+
+
+
+
+
 // ------------------- chatbot.js -------------------
 
 document.addEventListener('DOMContentLoaded', () => {
