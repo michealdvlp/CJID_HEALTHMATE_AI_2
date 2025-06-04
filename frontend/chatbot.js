@@ -1,103 +1,36 @@
-
-// … above in chatbot.js …
-
-async function handleAiConversation(userMessage) {
-  // (existing code that does fetch → /triage → set threadId → add AI text …)
-  // If possible_conditions are non-empty, call renderDiagnosisPanel(data).
-  if (data.possible_conditions && data.possible_conditions.length > 0) {
-    renderDiagnosisPanel(data);
-  }
-  // … rest of function …
-}
-
-// -------------------------------------------
-// REPLACE THIS old renderDiagnosisPanel
-//   (which used to hide analysisSummary when urgent)
-// … with the new version below: 
-function renderDiagnosisPanel(responseData) {
-  const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
-
-  // 1) Always set “Likely:” from the first condition (if any)
-  const primaryElement = document.getElementById('diagnosis-condition');
-  if (responseData.possible_conditions.length > 0) {
-    primaryElement.textContent = responseData.possible_conditions[0].name;
-  } else {
-    primaryElement.textContent = 'No conditions found';
-  }
-
-  // 2) Build the triage badge
-  const triageElem = document.getElementById('diagnosis-triage');
-  let triageText = '', triageIndicator = '', triageClass = '';
-  if (isUrgent) {
-    triageText = 'Urgent (Call Emergency)';
-    triageIndicator = '🟥';
-    triageClass = 'triage-level urgent';
-  } else if (responseData.triage.type === 'clinic') {
-    triageText = 'Moderate (See doctor within 24 hrs)';
-    triageIndicator = '🟡';
-    triageClass = 'triage-level moderate';
-  } else {
-    triageText = 'Mild (Self-care)';
-    triageIndicator = '🟢';
-    triageClass = 'triage-level mild';
-  }
-  triageElem.className = triageClass;
-  triageElem.innerHTML = `<span class="level-indicator">${triageIndicator}</span> ${triageText}`;
-
-  // 3) Show/hide the urgent block
-  if (isUrgent) {
-    diagnosisPanel.classList.add('urgent');
-    diagnosisPanelTitle.textContent = '🚨 Immediate Attention Required';
-    urgentDiagnosisContent.style.display = 'flex';
-  } else {
-    diagnosisPanel.classList.remove('urgent');
-    diagnosisPanelTitle.textContent = 'Diagnosis Result';
-    urgentDiagnosisContent.style.display = 'none';
-  }
-
-  // 4) Populate Analysis Summary (always visible)
-  const analysisList = document.getElementById('analysis-summary-list');
-  analysisList.innerHTML = '';
-  responseData.possible_conditions.forEach((cond, idx) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<strong>${idx + 1}. ${cond.name}:</strong> ${cond.description}`;
-    analysisList.appendChild(li);
-  });
-  analysisSummarySection.style.display = 'block';
-
-  // 5) Populate Next Steps (always visible)
-  const nextStepsList = document.getElementById('next-steps-list');
-  nextStepsList.innerHTML = '';
-  responseData.safety_measures.forEach(step => {
-    const li = document.createElement('li');
-    li.textContent = step;
-    nextStepsList.appendChild(li);
-  });
-  nextStepsSection.style.display = 'block';
-
-  // 6) Show confidence (you can hide or leave as you like)
-  confidenceScoreSection.style.display = 'block';
-
-  // 7) Reveal the panel, hide the reopen button
-  diagnosisPanel.style.display = 'flex';
-  diagnosisPanel.classList.add('active');
-  reopenPanelButton.style.display = 'none';
-}
-// -------------------------------------------
-
-// … rest of chatbot.js (no other changes needed) …
-
-
-
-
-
-
-
-
-
 // ------------------- chatbot.js -------------------
 
 document.addEventListener('DOMContentLoaded', () => {
+  // === 0. NEW: Helper to strip numbered follow-up questions ===
+  function stripFollowupsFromText(payload) {
+    let text = payload.text || "";
+    const qlist = Array.isArray(payload.follow_up_questions)
+      ? payload.follow_up_questions
+      : [];
+
+    if (!text || qlist.length === 0) {
+      return text.trim();
+    }
+
+    // 1) Remove each "1. <question>" / "2. <question>" … form from the text
+    qlist.forEach((q, idx) => {
+      const questionNumber = idx + 1;
+      const numberedForm = `${questionNumber}. ${q}`;
+      // Escape regex special chars in numberedForm
+      const escaped = numberedForm.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      text = text.replace(new RegExp(escaped, "g"), "");
+    });
+
+    // 2) Remove any leftover lines that are just a number + period (e.g. "1.")
+    text = text.replace(/^\s*\d+\.\s*$/gm, "");
+
+    // 3) Collapse 3+ consecutive newlines into exactly two newlines
+    text = text.replace(/\n{3,}/g, "\n\n");
+
+    // 4) Trim leading/trailing whitespace/newlines
+    return text.trim();
+  }
+
   // === 1. NEW: Define the backend base URL & threadId ===
   const API_BASE_URL = 'https://triagecall.vercel.app';
   let threadId = null;
@@ -146,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // === Utility: Show/hide screens ===
   function showScreen(screenToShow, fromSidebar = false) {
-    [welcomeScreen, chatScreen, firstAidScreen, symptomsHistoryScreen, healthFactsScreen, emergencyContactsScreen, settingsScreen]
+    [welcomeScreen, chatScreen, firstAidScreen, symptomsHistoryScreen,
+      healthFactsScreen, emergencyContactsScreen, settingsScreen]
       .forEach(screen => screen.classList.remove('active-screen'));
 
     screenToShow.classList.add('active-screen');
@@ -192,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 3. NEW: function to call /triage ===
+  // === 3. UPDATED: function to call /triage ===
   // -------------------------------------------
   async function handleAiConversation(userMessage) {
     // Add typing indicator
@@ -219,22 +153,27 @@ document.addEventListener('DOMContentLoaded', () => {
       // Save the returned thread_id
       threadId = data.thread_id;
 
-      // Render AI’s “text” in chat:
-      addMessage(data.text.trim(), 'ai');
+      // 1) Strip out any numbered follow-up questions from data.text
+      const cleanedText = stripFollowupsFromText(data);
 
-      // If we have possible_conditions, show diagnosis panel:
-      if (data.possible_conditions && data.possible_conditions.length > 0) {
-        renderDiagnosisPanel(data);
+      // 2) Render the cleaned “narrative” portion
+      if (cleanedText) {
+        addMessage(cleanedText, 'ai');
       }
-      // Otherwise, if there are follow_up_questions, list them:
-      else if (data.follow_up_questions && data.follow_up_questions.length > 0) {
+
+      // 3) If there are follow_up_questions, render each on its own line
+      if (data.follow_up_questions && data.follow_up_questions.length > 0) {
         data.follow_up_questions.forEach(q => {
           addMessage("🔸 " + q, 'ai');
         });
       }
 
-      // If send_sos is true and no conditions were shown, add an emergency prompt
-      if (data.send_sos && (!data.possible_conditions || data.possible_conditions.length === 0)) {
+      // 4) If we have possible_conditions, show diagnosis panel:
+      if (data.possible_conditions && data.possible_conditions.length > 0) {
+        renderDiagnosisPanel(data);
+      }
+      // 5) If send_sos is true and no conditions were shown, add an emergency prompt
+      else if (data.send_sos) {
         addMessage("🚨 This sounds like an emergency. Please call your local emergency number immediately.", 'ai');
       }
     }
@@ -246,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 4. NEW: renderDiagnosisPanel(data) ===
+  // === 4. UPDATED: renderDiagnosisPanel(data) ===
   // -------------------------------------------
   function renderDiagnosisPanel(responseData) {
     const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
@@ -325,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen(chatScreen);
     promptSuggestionArea.style.display = 'flex';
     setTimeout(() => chatInput.focus(), 600);
-    // Set the Chat nav item active:
     document.querySelector('.nav-item[data-target-screen="chat-screen"]').classList.add('active');
   });
 
@@ -344,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     diagnosisPanel.style.display = 'none';
     reopenPanelButton.style.display = 'none';
 
-    // Call our new function
+    // Call our updated function
     handleAiConversation(userMessage);
   });
 
@@ -358,7 +296,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chatInput.value.trim().length > 0) {
       promptSuggestionArea.style.display = 'none';
     } else {
-      // Only show suggestions if no panel is active
       if (!diagnosisPanel.classList.contains('active')) {
         promptSuggestionArea.style.display = 'flex';
       }
@@ -384,7 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
     diagnosisPanel.classList.remove('active');
     setTimeout(() => {
       diagnosisPanel.style.display = 'none';
-      // Show reopen button
       reopenPanelButton.style.display = 'flex';
       if (diagnosisPanel.classList.contains('urgent')) {
         reopenPanelButton.textContent = 'View Urgent Actions';
@@ -411,7 +347,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelector('.first-aid-screen .back-button').addEventListener('click', () => {
     showScreen(chatScreen);
-    // If it was urgent, re-show reopen button
     if (diagnosisPanel.classList.contains('urgent')) {
       reopenPanelButton.textContent = 'View Urgent Actions';
       reopenPanelButton.style.display = 'flex';
