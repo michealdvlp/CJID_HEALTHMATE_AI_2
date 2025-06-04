@@ -1,7 +1,7 @@
 // ------------------- chatbot.js -------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  // === 0. NEW: Helper to strip numbered follow-up questions ===
+  // === 0. HELPER: Strip out numbered follow-up questions from the LLM’s "text" ===
   function stripFollowupsFromText(payload) {
     let text = payload.text || "";
     const qlist = Array.isArray(payload.follow_up_questions)
@@ -16,12 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     qlist.forEach((q, idx) => {
       const questionNumber = idx + 1;
       const numberedForm = `${questionNumber}. ${q}`;
-      // Escape regex special chars in numberedForm
+      // Escape regex-special characters
       const escaped = numberedForm.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
       text = text.replace(new RegExp(escaped, "g"), "");
     });
 
-    // 2) Remove any leftover lines that are just a number + period (e.g. "1.")
+    // 2) Remove any leftover lines that are just a number + "." (e.g. "1.")
     text = text.replace(/^\s*\d+\.\s*$/gm, "");
 
     // 3) Collapse 3+ consecutive newlines into exactly two newlines
@@ -31,11 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return text.trim();
   }
 
-  // === 1. NEW: Define the backend base URL & threadId ===
+  // === 1. DEFINE BACKEND URL & THREAD ID ===
   const API_BASE_URL = 'https://triagecall.vercel.app';
   let threadId = null;
 
-  // === 2. Cache all DOM elements ===
+  // === 2. CACHE ALL DOM ELEMENTS ===
   const welcomeScreen = document.querySelector('.welcome-screen');
   const chatScreen = document.querySelector('.chat-screen');
   const firstAidScreen = document.querySelector('.first-aid-screen');
@@ -77,11 +77,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Track the currently active content screen
   let currentActiveContentScreen = welcomeScreen;
 
-  // === Utility: Show/hide screens ===
+  // === 3. UTILITY: Show/hide different screens ===
   function showScreen(screenToShow, fromSidebar = false) {
-    [welcomeScreen, chatScreen, firstAidScreen, symptomsHistoryScreen,
-      healthFactsScreen, emergencyContactsScreen, settingsScreen]
-      .forEach(screen => screen.classList.remove('active-screen'));
+    [
+      welcomeScreen,
+      chatScreen,
+      firstAidScreen,
+      symptomsHistoryScreen,
+      healthFactsScreen,
+      emergencyContactsScreen,
+      settingsScreen
+    ].forEach(screen => screen.classList.remove('active-screen'));
 
     screenToShow.classList.add('active-screen');
     currentActiveContentScreen = screenToShow;
@@ -91,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // === Sidebar open/close ===
+  // === 4. SIDEBAR OPEN/CLOSE ===
   function openSidebar() {
     sidebar.classList.add('active');
     sidebarOverlay.classList.add('active');
@@ -101,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebarOverlay.classList.remove('active');
   }
 
-  // === Chat helper: append a message bubble ===
+  // === 5. CHAT HELPERS ===
+  // 5.1 Append a message bubble to the chat
   function addMessage(text, sender) {
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message-bubble', sender);
@@ -110,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  // === Chat helper: typing “…” indicator ===
+  // 5.2 Typing “…” indicator
   function simulateAiTyping() {
     const typingBubble = document.createElement('div');
     typingBubble.classList.add('message-bubble', 'ai', 'typing-indicator');
@@ -126,15 +133,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 3. UPDATED: function to call /triage ===
+  // === 6. FUNCTION TO CALL /triage ===
   // -------------------------------------------
   async function handleAiConversation(userMessage) {
-    // Add typing indicator
+    // 6.1 Show typing indicator
     const typingIndicator = simulateAiTyping();
 
-    // Build payload (with optional thread_id)
+    // 6.2 Build payload (include thread_id if present)
     const payload = { description: userMessage };
-    if (threadId) payload.thread_id = threadId;
+    if (threadId) {
+      payload.thread_id = threadId;
+    }
 
     try {
       const resp = await fetch(`${API_BASE_URL}/triage`, {
@@ -150,29 +159,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Save the returned thread_id
+      // 6.3 Save the returned thread_id
       threadId = data.thread_id;
 
-      // 1) Strip out any numbered follow-up questions from data.text
+      // 6.4 Strip out any numbered follow-up questions from data.text
       const cleanedText = stripFollowupsFromText(data);
 
-      // 2) Render the cleaned “narrative” portion
+      // 6.5 Render the cleaned “narrative” (if not empty)
       if (cleanedText) {
         addMessage(cleanedText, 'ai');
       }
 
-      // 3) If there are follow_up_questions, render each on its own line
+      // 6.6 Render each follow-up question on its own line
       if (data.follow_up_questions && data.follow_up_questions.length > 0) {
         data.follow_up_questions.forEach(q => {
           addMessage("🔸 " + q, 'ai');
         });
       }
 
-      // 4) If we have possible_conditions, show diagnosis panel:
+      // 6.7 If there are possible_conditions, show diagnosis panel
       if (data.possible_conditions && data.possible_conditions.length > 0) {
         renderDiagnosisPanel(data);
       }
-      // 5) If send_sos is true and no conditions were shown, add an emergency prompt
+      // 6.8 Otherwise, if send_sos is true, prompt emergency
       else if (data.send_sos) {
         addMessage("🚨 This sounds like an emergency. Please call your local emergency number immediately.", 'ai');
       }
@@ -185,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 4. UPDATED: renderDiagnosisPanel(data) ===
+  // === 7. FUNCTION TO RENDER DIAGNOSIS PANEL ===
   // -------------------------------------------
   function renderDiagnosisPanel(responseData) {
     const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
@@ -205,12 +214,12 @@ document.addEventListener('DOMContentLoaded', () => {
       confidenceScoreSection.style.display = 'block';
       nextStepsSection.style.display = 'block';
 
-      // Populate “analysis-summary” with each possible_condition’s name & description
+      // Populate “analysis-summary” with each condition’s name & description
       const analysisList = document.getElementById('analysis-summary-list');
       analysisList.innerHTML = '';
       responseData.possible_conditions.forEach((cond, idx) => {
         const li = document.createElement('li');
-        li.innerHTML = `<strong>${idx+1}. ${cond.name}:</strong> ${cond.description}`;
+        li.innerHTML = `<strong>${idx + 1}. ${cond.name}:</strong> ${cond.description}`;
         analysisList.appendChild(li);
       });
 
@@ -258,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // 5. Event Listeners: “Start Chat,” “Send,” “Enter” key
+  // === 8. EVENT LISTENERS: “Start Chat,” “Send,” “Enter” key ===
   // -------------------------------------------
   startChatButton.addEventListener('click', () => {
     showScreen(chatScreen);
@@ -282,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
     diagnosisPanel.style.display = 'none';
     reopenPanelButton.style.display = 'none';
 
-    // Call our updated function
+    // Call our function
     handleAiConversation(userMessage);
   });
 
@@ -315,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // 6. Close/Reopen Diagnosis Panel
+  // === 9. CLOSE/REOPEN DIAGNOSIS PANEL ===
   // -------------------------------------------
   closeDiagnosisPanelButton.addEventListener('click', () => {
     diagnosisPanel.classList.remove('active');
@@ -336,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // 7. Emergency / First Aid Buttons
+  // === 10. EMERGENCY / FIRST AID BUTTONS ===
   // -------------------------------------------
   callEmergencyButton.addEventListener('click', () => {
     alert('Calling emergency services...');
@@ -354,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // 8. Sidebar Toggle & Navigation
+  // === 11. SIDEBAR TOGGLE & NAVIGATION ===
   // -------------------------------------------
   sidebarToggleButton.addEventListener('click', openSidebar);
   closeSidebarButton.addEventListener('click', closeSidebar);
@@ -395,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // 9. Back Buttons for Other Screens
+  // === 12. BACK BUTTONS FOR OTHER SCREENS ===
   // -------------------------------------------
   allBackButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -410,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // 10. Initial Setup
+  // === 13. INITIAL SETUP ===
   // -------------------------------------------
   showScreen(welcomeScreen);
 });
