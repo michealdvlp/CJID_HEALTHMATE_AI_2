@@ -25,8 +25,14 @@
     --moderate-light-orange: #fff8e6;
     --mild-green: #7ed321;
     --mild-light-green: #effde6;
+
+    /* Additional palette variables */
     --background-color: #f0f8ff; /* Alice Blue */
     --shadow-color: rgba(0, 0, 0, 0.1);
+    --warning-red: #e74c3c;
+    --urgent-red: #c0392b;
+    --success-green: #27ae60;
+    --warning-orange: #f39c12;
     --panel-bg-color: #ffffff;
 }
 
@@ -39,39 +45,34 @@
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--light-grey);
-    display: flex;
-    justify-content: center;
+    display: block;          /* keep as in your provided snippet */
+    justify-content: center; /* these two are not “flex”y, but kept identically as you gave */
     align-items: center;
     min-height: 100vh;
     color: var(--text-color);
-    overflow: hidden;
+    overflow: hidden; /* Prevent body scroll when app-container is 100vh */
 }
 
 /* -------------------------------- */
-/* 1. RESPONSIVE CHAT CONTAINER     */
+/* 1. REPLACED: app-container STYLES */
 /* -------------------------------- */
 .app-container {
     background-color: #fff;
     border-radius: 12px;
     box-shadow: var(--shadow);
-    width: 100%;       /* Full width of the viewport or parent */
-    height: 90vh;      /* 90% of viewport height */
+    width: 90%;
+    max-width: 800px;
+    margin: 20px 0;
+    height: 90vh;
     display: flex;
+    margin-left: 20vw;
     flex-direction: column;
     overflow: hidden;
-    position: relative;
-}
-
-@media (max-width: 768px) {
-    .app-container {
-        width: 100%;
-        height: 100vh;  /* full height on smaller screens */
-        border-radius: 0; /* no rounding on tiny screens */
-    }
+    position: relative; /* For absolute positioning of screens */
 }
 
 /* -------------------------------- */
-/* 2. SCREEN MANAGEMENT             */
+/* 2. BASE SCREEN STYLES            */
 /* -------------------------------- */
 .welcome-screen, .chat-screen, .first-aid-screen {
     position: absolute;
@@ -82,27 +83,36 @@ body {
     display: flex;
     flex-direction: column;
     transition: transform 0.5s ease-in-out;
-    background-color: #fff;
+    background-color: #fff; /* Ensure they have a background */
 }
 
+/* Default state: All screens hidden except welcome */
 .welcome-screen {
-    transform: translateX(100%);
+    transform: translateX(100%); /* Start off-screen by default */
 }
 .chat-screen {
-    transform: translateX(100%);
+    transform: translateX(100%); /* Start off-screen by default */
 }
 .first-aid-screen {
-    transform: translateX(100%);
+    transform: translateX(100%); /* Start off-screen by default */
 }
 
-.welcome-screen.active-screen,
-.chat-screen.active-screen,
+/* Active state: Bring screen into view */
+.welcome-screen.active-screen {
+    transform: translateX(0);
+    z-index: 2; /* Bring to front */
+}
+.chat-screen.active-screen {
+    transform: translateX(0);
+    z-index: 2;
+}
 .first-aid-screen.active-screen {
     transform: translateX(0);
+    z-index: 3; /* Highest z-index for first aid */
 }
 
 /* -------------------------------- */
-/* 3. HEADER STYLES                 */
+/* 3. HEADER FOR ALL SCREENS        */
 /* -------------------------------- */
 .app-header {
     display: flex;
@@ -126,10 +136,10 @@ body {
 }
 
 /* -------------------------------- */
-/* 4. WELCOME SCREEN                */
+/* 4. WELCOME SCREEN SPECIFICS       */
 /* -------------------------------- */
 .welcome-screen {
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     text-align: center;
     padding: 20px;
@@ -186,20 +196,20 @@ body {
 }
 
 .cta-button:hover {
-    background-color: #2db36f;
+    background-color: #2db36f; /* Darker blue */
 }
 
 .cta-button:active {
     transform: scale(0.98);
 }
 
+/* Outline style (if needed) */
 .cta-button.primary-outline {
     background-color: transparent;
     color: var(--primary-blue);
     border: 2px solid var(--primary-blue);
     box-shadow: none;
 }
-
 .cta-button.primary-outline:hover {
     background-color: var(--primary-blue);
     color: #fff;
@@ -258,12 +268,12 @@ body {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    position: relative;
-    overflow: hidden;
+    position: relative; /* For absolute positioning of panels */
+    overflow: hidden; /* To handle internal scrolling */
 }
 
 .chat-messages {
-    flex-grow: 1;
+    flex-grow: 1; /* Takes available space */
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -271,7 +281,7 @@ body {
     overflow-y: auto;
     scroll-behavior: smooth;
     -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none;    /* Firefox */
+    scrollbar-width: none; /* Firefox */
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -284,44 +294,32 @@ body {
 .message-bubble {
     max-width: 75%;
     padding: 12px 18px;
+    border-radius: 18px;
     line-height: 1.5;
     word-wrap: break-word;
     font-size: 0.95em;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
-/* User bubble (align right, left‐aligned text) */
 .message-bubble.user {
     background-color: var(--user-bubble-bg);
     color: var(--user-bubble-text);
-    align-self: flex-end;
-    text-align: left;
+    align-self: flex-end; /* Align to the right */
+    border-bottom-right-radius: 4px;
     white-space: pre-wrap; /* honor line breaks */
-    border-radius: 16px 16px 4px 16px;
-    padding: 12px 18px;
 }
 
-/* AI bubble (align left, left‐aligned text) */
 .message-bubble.ai {
     background-color: var(--ai-bubble-bg);
     color: var(--ai-bubble-text);
     border: 1px solid var(--ai-bubble-border);
-    align-self: flex-start;
-    text-align: left;
+    align-self: flex-start; /* Align to the left */
+    border-bottom-left-radius: 4px;
     white-space: pre-wrap; /* honor line breaks */
-    border-radius: 16px 16px 16px 4px;
-    padding: 12px 18px;
 }
 
 .initial-ai-message {
-    margin-top: auto;
-}
-
-@media (max-width: 480px) {
-    .message-bubble {
-        max-width: 90%;
-        font-size: 0.9em;
-    }
+    margin-top: auto; /* Push to bottom initially for chat-like appearance */
 }
 
 /* -------------------------------- */
@@ -345,7 +343,7 @@ body {
     border-top: 1px solid var(--border-color);
     background-color: #fff;
     flex-shrink: 0;
-    position: relative;
+    position: relative; /* For positioning reopen button */
 }
 
 .input-wrapper {
@@ -398,7 +396,7 @@ body {
 /* Reopen Panel Button */
 .reopen-button {
     position: absolute;
-    bottom: 70px;
+    bottom: 70px; /* Adjust based on input area height */
     right: 20px;
     background-color: var(--primary-blue);
     color: #fff;
@@ -413,7 +411,7 @@ body {
     align-items: center;
     gap: 8px;
     transition: background-color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
-    z-index: 10;
+    z-index: 10; /* Ensure it's above other elements */
 }
 
 .reopen-button:hover {
@@ -425,19 +423,19 @@ body {
 /* 10. LOADING DIAGNOSIS OVERLAY    */
 /* -------------------------------- */
 .loading-diagnosis {
-    position: absolute;
+    position: absolute; /* Position over chat messages */
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.95);
+    height: 100%; /* Cover entire chat content area */
+    background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent white overlay */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 10;
+    z-index: 10; /* Above chat messages but below panels */
     text-align: center;
-    padding-bottom: 60px;
+    padding-bottom: 60px; /* Space for disclaimer/input */
 }
 
 .loader-animation {
@@ -466,18 +464,18 @@ body {
 /* -------------------------------- */
 .diagnosis-panel {
     position: absolute;
-    bottom: 0;
+    bottom: 0; /* Appears from the bottom */
     left: 0;
     width: 100%;
     background-color: #fff;
     border-top: 1px solid var(--border-color);
     padding: 20px;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-    transform: translateY(100%);
+    transform: translateY(100%); /* Hidden by default */
     transition: transform 0.4s ease-out;
-    z-index: 15;
-    max-height: 80%;
-    overflow-y: auto;
+    z-index: 15; /* Above loading and chat messages */
+    max-height: 80%; /* Don't cover entire chat */
+    overflow-y: auto; /* If content is too long */
     display: flex;
     flex-direction: column;
 }
@@ -500,6 +498,7 @@ body {
     flex-grow: 1;
 }
 
+/* Reusable close button style for both panels */
 .close-panel-button {
     background: none;
     border: none;
@@ -616,33 +615,34 @@ body {
 }
 
 /* -------------------------------- */
-/* 12. URGENT CONTENT INSIDE PANEL  */
+/* 12. INTEGRATED URGENT CONTENT    */
 /* -------------------------------- */
 .diagnosis-panel.urgent {
-    border-left: 8px solid var(--urgent-red);
-    background-color: var(--urgent-light-red);
+    border-left: 8px solid var(--urgent-red); /* Prominent left border */
+    background-color: var(--urgent-light-red); /* Subtle light red background tint */
 }
 
 .diagnosis-panel.urgent .panel-header h3 {
-    color: var(--urgent-red);
+    color: var(--urgent-red); /* Red header text */
 }
 
 .diagnosis-panel.urgent .card-layout {
-    background-color: transparent;
+    background-color: transparent; /* No blue bg for urgent block */
     padding: 0;
 }
 
 .urgent-diagnosis-content {
-    display: none;
+    /* This will be shown/hidden by JS */
+    display: none; /* Hidden by default */
     flex-direction: column;
     align-items: center;
     gap: 15px;
     padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 10px;
-    border: 1px solid var(--urgent-red);
-    background-color: #fff;
-    box-shadow: 0 2px 8px rgba(208, 2, 27, 0.1);
+    margin-bottom: 20px; /* Space below urgent section */
+    border-radius: 10px; /* Match other cards */
+    border: 1px solid var(--urgent-red); /* Red border */
+    background-color: #fff; /* White bg for alert card */
+    box-shadow: 0 2px 8px rgba(208, 2, 27, 0.1); /* Subtle red shadow */
 }
 
 .urgent-diagnosis-content .alert-icon-text {
@@ -653,7 +653,7 @@ body {
 }
 
 .urgent-diagnosis-content .fas {
-    font-size: 2.8em;
+    font-size: 2.8em; /* Make the icon prominent */
 }
 
 .urgent-diagnosis-content .alert-text {
@@ -693,6 +693,7 @@ body {
     background-color: #a60117;
 }
 
+/* Outline style for urgent context */
 .emergency-actions .cta-button.primary-outline {
     border-color: var(--urgent-red);
     color: var(--urgent-red);
@@ -776,20 +777,20 @@ body {
 /* 14. PROMPT SUGGESTION AREA       */
 /* -------------------------------- */
 .prompt-suggestion-area {
-    display: none;
+    display: none; /* Will be toggled by JS */
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    padding-top: 30px;
+    padding-top: 30px; /* Add some top padding */
     background-color: #fff;
     text-align: center;
-    overflow-y: auto;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    overflow-y: auto; /* Enable scroll if prompts overflow */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
 
 .prompt-suggestion-area::-webkit-scrollbar {
-    display: none;
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .prompt-suggestion-area .welcome-prompt-text {
@@ -814,7 +815,7 @@ body {
     flex-direction: column;
     gap: 15px;
     width: 100%;
-    max-width: 500px;
+    max-width: 500px; /* Constrain width of buttons */
     margin-bottom: 30px;
 }
 
@@ -870,12 +871,98 @@ body {
     color: var(--primary-blue);
 }
 
+/* -------------------------------- */
+/* 15. POSSIBLE CONDITION CARDS     */
+/* -------------------------------- */
+.possible-condition-card {
+    background-color: #f6f6f6; /* Light grey container */
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    white-space: pre-wrap;  /* Preserve line breaks */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+.possible-condition-card h5 {
+    margin: 0 0 6px 0;
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--text-color);
+}
+.possible-condition-card p {
+    margin: 0;
+    font-size: 0.95em;
+    color: var(--grey-text);
+    line-height: 1.4;
+}
+
+/* -------------------------------- */
+/* 16. MEDIA QUERIES FOR RESPONSIVENESS */
+/* -------------------------------- */
 @media (max-width: 768px) {
+    .app-container {
+        width: 100%;
+        height: 100vh;
+        margin: 20px auto;
+        border-radius: 0;
+    }
+
+    .app-header .disclaimer {
+        font-size: 0.75em;
+        text-align: right;
+    }
+
+    .welcome-content h1 {
+        font-size: 1.8em;
+    }
+
+    .welcome-content p {
+        font-size: 0.9em;
+    }
+
+    .cta-button {
+        padding: 12px 25px;
+        font-size: 1em;
+    }
+
+    .message-bubble {
+        max-width: 90%;
+        font-size: 0.9em;
+    }
+
+    .diagnosis-panel {
+        max-height: 90%;
+    }
+
+    .diagnosis-panel h3 {
+        font-size: 1.2em;
+    }
+
+    .diagnosis-panel .condition-prediction {
+        font-size: 1.1em;
+    }
+
+    .urgent-diagnosis-content .alert-text {
+        font-size: 1.4em;
+    }
+
+    .emergency-actions .cta-button.red,
+    .emergency-actions .cta-button.primary-outline {
+        font-size: 1em;
+        padding: 12px 20px;
+        width: calc(50% - 7.5px); /* Two buttons side-by-side */
+    }
+
+    .reopen-button {
+        padding: 6px 12px;
+        font-size: 0.8em;
+        bottom: 60px;
+    }
+
     .prompt-suggestion-area {
-        padding-top: 25px;
+        padding-top: 25px; 
         padding-left: 15px;
         padding-right: 15px;
-        padding-bottom: 20px;
+        padding-bottom: 20px; 
     }
     .prompt-suggestion-area .welcome-prompt-text h2 {
         font-size: 1.6em;
@@ -890,9 +977,109 @@ body {
         padding: 12px 15px;
         font-size: 0.95em;
     }
+
+    .sidebar {
+        width: 220px;
+    }
+    .chat-header .sidebar-toggle-button {
+        font-size: 1.4em; /* Slightly smaller for mobile */
+    }
+    .app-screen .app-header .logo {
+        font-size: 1.1em;
+    }
+    .app-screen .back-button {
+        font-size: 1.4em;
+    }
+    .app-screen .screen-content {
+        padding: 15px;
+    }
+    .app-screen .screen-content h2 {
+        font-size: 1.4em;
+    }
+    .app-screen .screen-content p {
+        font-size: 0.95em;
+    }
+    .history-item, .article-card, .contact-item {
+        padding: 12px;
+    }
+    .history-item h4, .article-card h3, .contact-item h4 {
+        font-size: 1em;
+    }
+    .history-item p, .contact-item p, .article-card p, .read-more-link, .contact-item a {
+        font-size: 0.85em;
+    }
+    .settings-list li {
+        font-size: 0.95em;
+        padding: 12px;
+    }
 }
 
 @media (max-width: 480px) {
+    .app-container {
+        width: 100%;
+        height: 100vh;
+        margin: auto;
+        border-radius: 0;
+    }
+
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+        padding: 10px 15px;
+    }
+    .app-header .disclaimer {
+        text-align: left;
+    }
+
+    .chat-header {
+        padding: 10px 15px;
+    }
+    .user-profile .avatar {
+        width: 35px;
+        height: 35px;
+    }
+    .user-profile .user-name {
+        font-size: 0.9em;
+    }
+
+    .chat-content {
+        padding: 15px;
+    }
+
+    .input-wrapper {
+        padding: 6px 12px;
+    }
+    #chat-input {
+        padding: 6px 8px;
+    }
+    #send-button {
+        width: 35px;
+        height: 35px;
+        font-size: 1em;
+    }
+
+    .loading-diagnosis p {
+        font-size: 1em;
+    }
+    .loader-animation {
+        width: 50px;
+        height: 50px;
+    }
+
+    .emergency-actions {
+        flex-direction: column; /* Stack buttons vertically */
+        gap: 10px;
+    }
+    .emergency-actions .cta-button {
+        width: 100%;
+    }
+
+    .reopen-button {
+        bottom: 55px;
+        right: 15px;
+    }
+
     .prompt-suggestion-area {
         padding-top: 20px;
         padding-left: 15px;
@@ -919,35 +1106,383 @@ body {
     .prompt-button .fas {
         font-size: 1.1em;
     }
+
+    .sidebar {
+        width: 100%;
+    }
+    .sidebar-header {
+        padding: 10px 15px;
+    }
+    .sidebar-logo {
+        font-size: 1.1em;
+    }
+    .close-sidebar-button {
+        font-size: 1.3em;
+    }
+    .sidebar-nav .nav-item {
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+    .sidebar-footer {
+        padding: 10px 15px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .logout-button {
+        align-self: flex-end;
+    }
+
+    .chat-header .sidebar-toggle-button {
+        font-size: 1.3em;
+        margin-right: 10px;
+    }
+
+    .app-screen .app-header {
+        padding: 10px 15px;
+    }
+    .app-screen .app-header .logo {
+        font-size: 1em;
+        margin-right: 30px;
+    }
+    .app-screen .back-button {
+        font-size: 1.3em;
+        margin-right: 15px;
+    }
+    .app-screen .screen-content {
+        padding: 10px 15px;
+    }
+    .app-screen .screen-content h2 {
+        font-size: 1.2em;
+    }
+    .app-screen .screen-content p {
+        font-size: 0.85em;
+    }
+    .history-list, .article-list, .contact-list {
+        gap: 10px;
+    }
+    .history-item, .article-card, .contact-item {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+    .settings-list li {
+        padding: 10px;
+        font-size: 0.9em;
+        gap: 10px;
+    }
 }
 
 /* -------------------------------- */
-/* 15. POSSIBLE CONDITION CARDS     */
+/* 17. SIDEBAR STYLES (UNCHANGED)    */
 /* -------------------------------- */
-.possible-condition-card {
-    background-color: #f6f6f6; /* light grey container */
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-bottom: 12px;
-    white-space: pre-wrap;  /* preserve line breaks */
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999; /* Below sidebar, above app content */
+    display: none; /* Hidden by default */
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
-.possible-condition-card h5 {
-    margin: 0 0 6px 0;
-    font-size: 1em;
-    font-weight: 600;
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px; /* Standard sidebar width */
+    height: 100%;
+    background-color: #ffffff; /* White background */
+    box-shadow: 2px 0 10px var(--shadow-color);
+    z-index: 1000; /* Above everything */
+    transform: translateX(-100%); /* Start off-screen */
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
     color: var(--text-color);
 }
-.possible-condition-card p {
-    margin: 0;
-    font-size: 0.95em;
+.sidebar.active {
+    transform: translateX(0); /* Slide in */
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+.sidebar-logo {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+.close-sidebar-button {
+    background: none;
+    border: none;
+    font-size: 1.5em;
     color: var(--grey-text);
-    line-height: 1.4;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.close-sidebar-button:hover {
+    color: var(--primary-blue);
+}
+
+.sidebar-nav {
+    flex-grow: 1; /* Allows navigation to take up available space */
+    padding: 20px 0;
+    overflow-y: auto; /* Enable scrolling for many nav items */
+}
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sidebar-nav li {
+    margin-bottom: 5px;
+}
+.sidebar-nav .nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 1.0em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    border-left: 3px solid transparent; /* For active indicator */
+}
+.sidebar-nav .nav-item:hover {
+    background-color: var(--light-blue);
+    color: var(--primary-blue);
+}
+.sidebar-nav .nav-item.active {
+    background-color: var(--light-blue);
+    color: var(--primary-blue);
+    font-weight: 600;
+    border-left-color: var(--primary-blue);
+}
+.sidebar-nav .nav-item .fas {
+    margin-right: 15px;
+    width: 20px; /* Ensure consistent icon alignment */
+    text-align: center;
+}
+
+.sidebar-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.sidebar-footer .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+.sidebar-footer .user-info .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--light-blue);
+}
+.logout-button {
+    background: none;
+    border: none;
+    color: var(--grey-text);
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.logout-button:hover {
+    color: var(--warning-red);
+}
+
+.chat-header .sidebar-toggle-button {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: var(--grey-text);
+    cursor: pointer;
+    margin-right: 15px;
+    transition: color 0.2s ease;
+}
+.chat-header .sidebar-toggle-button:hover {
+    color: var(--primary-blue);
 }
 
 /* -------------------------------- */
-/* 16. SIDEBAR & APP‐SCREEN RULES    */
-/* (Leave your existing sidebar/app‐screen rules unchanged) */
+/* 18. APP-SCREEN STYLES (UNCHANGED) */
 /* -------------------------------- */
+.app-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%); /* Start off-screen to the right */
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth slide animation */
+    z-index: 10; /* Below sidebar, above welcome screen */
+}
+.app-screen.active-screen {
+    transform: translateX(0); /* Slide into view */
+    z-index: 20; /* Ensure it's above other inactive screens */
+}
 
-/* ... (your existing sidebar/app‐screen CSS remains exactly as before) ... */
+.app-screen .app-header {
+    background-color: #ffffff; /* Consistent header background */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    z-index: 5; /* Ensure header is above content */
+    padding: 15px 20px; /* Uniform padding */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* Align logo/title to left */
+}
+
+.app-screen .app-header .logo {
+    font-size: 1.2em; /* Match sidebar logo size */
+    font-weight: 600;
+    color: var(--primary-blue);
+    flex-grow: 1; /* Allow logo to push back button to left */
+    text-align: center; /* Center the title */
+    margin-right: 40px; /* Space for back button */
+}
+
+.app-screen .back-button {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: var(--grey-text);
+    cursor: pointer;
+    transition: color 0.2s ease;
+    margin-right: 20px; /* Space from title */
+}
+
+.app-screen .back-button:hover {
+    color: var(--primary-blue);
+}
+
+.app-screen .screen-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    color: var(--text-color);
+}
+
+.app-screen .screen-content h2 {
+    color: var(--primary-blue);
+    margin-bottom: 15px;
+    font-size: 1.6em;
+    font-weight: 700;
+}
+
+.app-screen .screen-content p {
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+/* Specific content styles for new screens */
+.history-list, .article-list, .contact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.history-item, .article-card, .contact-item {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+}
+
+.history-item h4, .article-card h3, .contact-item h4 {
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.history-item p, .contact-item p {
+    font-size: 0.9em;
+    color: var(--grey-text);
+    margin-bottom: 5px;
+}
+
+.article-card p {
+    font-size: 0.95em;
+    color: var(--grey-text);
+    margin-bottom: 10px;
+}
+
+.read-more-link, .contact-item a {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.read-more-link:hover, .contact-item a:hover {
+    text-decoration: underline;
+}
+
+.contact-item .fas {
+    margin-right: 5px;
+}
+
+.add-contact-button {
+    margin-top: 20px;
+    width: fit-content;
+    align-self: center; /* Center the button if using flex column */
+}
+
+.settings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.settings-list li {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 1em;
+    color: var(--text-color);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.settings-list li .fas {
+    color: var(--primary-blue);
+    font-size: 1.2em;
+}
+
+/* -------------------------------- */
+/* 19. ADDITIONAL MEDIA QUERIES     */
+/* -------------------------------- */
+@media (max-width: 768px) {
+    /* (we already handled most above; nothing new to override) */
+}
+
+@media (max-width: 480px) {
+    /* (we already handled most above; nothing new to override) */
+}
