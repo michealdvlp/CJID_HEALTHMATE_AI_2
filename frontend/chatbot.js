@@ -1,7 +1,7 @@
 // ------------------- chatbot.js -------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  // === 0. HELPER: Strip out numbered follow-up questions from the LLM’s "text" ===
+  // === (A) HELPER: Remove numbered follow-up lines from data.text ===
   function stripFollowupsFromText(payload) {
     let text = payload.text || "";
     const qlist = Array.isArray(payload.follow_up_questions)
@@ -12,30 +12,30 @@ document.addEventListener('DOMContentLoaded', () => {
       return text.trim();
     }
 
-    // 1) Remove each "1. <question>" / "2. <question>" … form from the text
+    // 1. Remove each “1. <question>”, “2. <question>”, … from the text
     qlist.forEach((q, idx) => {
       const questionNumber = idx + 1;
       const numberedForm = `${questionNumber}. ${q}`;
-      // Escape regex-special characters
+      // Escape regex metacharacters
       const escaped = numberedForm.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
       text = text.replace(new RegExp(escaped, "g"), "");
     });
 
-    // 2) Remove any leftover lines that are just a number + "." (e.g. "1.")
+    // 2. Remove any leftover lines that are just a number + “.”
     text = text.replace(/^\s*\d+\.\s*$/gm, "");
 
-    // 3) Collapse 3+ consecutive newlines into exactly two newlines
+    // 3. Collapse 3+ consecutive newlines into exactly two newlines
     text = text.replace(/\n{3,}/g, "\n\n");
 
-    // 4) Trim leading/trailing whitespace/newlines
+    // 4. Trim leading/trailing whitespace/newlines
     return text.trim();
   }
 
-  // === 1. DEFINE BACKEND URL & THREAD ID ===
+  // === 1. NEW: Define the backend base URL & threadId ===
   const API_BASE_URL = 'https://triagecall.vercel.app';
   let threadId = null;
 
-  // === 2. CACHE ALL DOM ELEMENTS ===
+  // === 2. Cache all DOM elements ===
   const welcomeScreen = document.querySelector('.welcome-screen');
   const chatScreen = document.querySelector('.chat-screen');
   const firstAidScreen = document.querySelector('.first-aid-screen');
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Track the currently active content screen
   let currentActiveContentScreen = welcomeScreen;
 
-  // === 3. UTILITY: Show/hide different screens ===
+  // === Utility: Show/hide screens ===
   function showScreen(screenToShow, fromSidebar = false) {
     [
       welcomeScreen,
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // === 4. SIDEBAR OPEN/CLOSE ===
+  // === Sidebar open/close ===
   function openSidebar() {
     sidebar.classList.add('active');
     sidebarOverlay.classList.add('active');
@@ -107,8 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebarOverlay.classList.remove('active');
   }
 
-  // === 5. CHAT HELPERS ===
-  // 5.1 Append a message bubble to the chat
+  // === Chat helper: append a message bubble ===
   function addMessage(text, sender) {
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message-bubble', sender);
@@ -117,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  // 5.2 Typing “…” indicator
+  // === Chat helper: typing “…” indicator ===
   function simulateAiTyping() {
     const typingBubble = document.createElement('div');
     typingBubble.classList.add('message-bubble', 'ai', 'typing-indicator');
@@ -133,13 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 6. FUNCTION TO CALL /triage ===
+  // === 3. NEW: function to call /triage ===
   // -------------------------------------------
   async function handleAiConversation(userMessage) {
-    // 6.1 Show typing indicator
+    // Add typing indicator
     const typingIndicator = simulateAiTyping();
 
-    // 6.2 Build payload (include thread_id if present)
+    // Build payload (with optional thread_id)
     const payload = { description: userMessage };
     if (threadId) {
       payload.thread_id = threadId;
@@ -159,30 +158,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 6.3 Save the returned thread_id
+      // Save the returned thread_id
       threadId = data.thread_id;
 
-      // 6.4 Strip out any numbered follow-up questions from data.text
+      // (A) Strip out any numbered follow-up questions from data.text
       const cleanedText = stripFollowupsFromText(data);
 
-      // 6.5 Render the cleaned “narrative” (if not empty)
+      // Render the cleaned text (if any)
       if (cleanedText) {
         addMessage(cleanedText, 'ai');
       }
 
-      // 6.6 Render each follow-up question on its own line
+      // Render each follow-up question on its own line (if present)
       if (data.follow_up_questions && data.follow_up_questions.length > 0) {
         data.follow_up_questions.forEach(q => {
           addMessage("🔸 " + q, 'ai');
         });
       }
 
-      // 6.7 If there are possible_conditions, show diagnosis panel
+      // If possible_conditions are non-empty, show diagnosis panel:
       if (data.possible_conditions && data.possible_conditions.length > 0) {
         renderDiagnosisPanel(data);
       }
-      // 6.8 Otherwise, if send_sos is true, prompt emergency
-      else if (data.send_sos) {
+      // Otherwise, if send_sos is true and no conditions, prompt emergency:
+      else if (data.send_sos && (!data.possible_conditions || data.possible_conditions.length === 0)) {
         addMessage("🚨 This sounds like an emergency. Please call your local emergency number immediately.", 'ai');
       }
     }
@@ -194,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 7. FUNCTION TO RENDER DIAGNOSIS PANEL ===
+  // === 4. NEW: renderDiagnosisPanel(data) ===
   // -------------------------------------------
   function renderDiagnosisPanel(responseData) {
     const isUrgent = responseData.send_sos || responseData.triage.type === 'hospital';
@@ -214,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       confidenceScoreSection.style.display = 'block';
       nextStepsSection.style.display = 'block';
 
-      // Populate “analysis-summary” with each condition’s name & description
+      // Populate “analysis-summary” with each possible_condition’s name & description
       const analysisList = document.getElementById('analysis-summary-list');
       analysisList.innerHTML = '';
       responseData.possible_conditions.forEach((cond, idx) => {
@@ -267,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // -------------------------------------------
-  // === 8. EVENT LISTENERS: “Start Chat,” “Send,” “Enter” key ===
+  // 5. Event Listeners: “Start Chat,” “Send,” “Enter” key
   // -------------------------------------------
   startChatButton.addEventListener('click', () => {
     showScreen(chatScreen);
@@ -324,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // === 9. CLOSE/REOPEN DIAGNOSIS PANEL ===
+  // 6. Close/Reopen Diagnosis Panel
   // -------------------------------------------
   closeDiagnosisPanelButton.addEventListener('click', () => {
     diagnosisPanel.classList.remove('active');
@@ -345,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // === 10. EMERGENCY / FIRST AID BUTTONS ===
+  // 7. Emergency / First Aid Buttons
   // -------------------------------------------
   callEmergencyButton.addEventListener('click', () => {
     alert('Calling emergency services...');
@@ -363,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // === 11. SIDEBAR TOGGLE & NAVIGATION ===
+  // 8. Sidebar Toggle & Navigation
   // -------------------------------------------
   sidebarToggleButton.addEventListener('click', openSidebar);
   closeSidebarButton.addEventListener('click', closeSidebar);
@@ -404,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // === 12. BACK BUTTONS FOR OTHER SCREENS ===
+  // 9. Back Buttons for Other Screens
   // -------------------------------------------
   allBackButtons.forEach(button => {
     button.addEventListener('click', () => {
@@ -419,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------------------
-  // === 13. INITIAL SETUP ===
+  // 10. Initial Setup
   // -------------------------------------------
   showScreen(welcomeScreen);
 });
